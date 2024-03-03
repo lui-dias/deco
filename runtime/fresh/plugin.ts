@@ -30,6 +30,7 @@ import { default as PreviewsPage } from "./routes/previews.tsx";
 import { handler as releaseHandler } from "./routes/release.ts";
 import { handler as renderHandler } from "./routes/render.ts";
 import { handler as workflowHandler } from "./routes/workflow.ts";
+import { measure } from "../../measure.ts";
 
 export interface InitOptions<TManifest extends AppManifest = AppManifest> {
   manifest: TManifest;
@@ -52,6 +53,7 @@ const noop: MiddlewareHandler = (_req, ctx) => {
 
 export default function decoPlugin(opt: Options): Plugin {
   const ctxProvider = Deno.args.includes("build") ? noop : contextProvider(opt);
+
   const routes: Array<
     {
       paths: string[];
@@ -103,6 +105,7 @@ export default function decoPlugin(opt: Options): Plugin {
       component: Render,
     },
   ];
+
   return {
     name: "deco",
     middlewares: [
@@ -110,10 +113,12 @@ export default function decoPlugin(opt: Options): Plugin {
         path: "/",
         middleware: {
           handler: [
-            ctxProvider,
-            alienRelease,
-            buildDecoState(),
-            ...decoMiddleware,
+            measure(ctxProvider, "ctxProvider"),
+            measure(alienRelease, "alienRelease"),
+            measure(buildDecoState(), "buildDecoState"),
+            ...decoMiddleware.map((mw, i) =>
+              measure(mw, `decoMiddleware--${i}`)
+            ),
           ] as MiddlewareHandler<Record<string, unknown>>[],
         },
       },
